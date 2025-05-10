@@ -5,6 +5,7 @@ import connectDB from "./config/dbConnection";
 import { errorHandler, routeNotFound } from "./middleware/errorMiddleware";
 import auth from "./routes/auth";
 import blogs from "./routes/blog";
+import corsOptions from "./config/corOptions";
 
 // Create Express application
 const app: Application = express();
@@ -12,13 +13,19 @@ dotenv.config();
 
 const PORT = process.env.PORT || 8080;
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint (add this before other routes)
 app.get("/", (req: Request, res: Response) => {
   res.status(200).send("server is ready");
+});
+app.get("/_ah/health", (req: Request, res: Response) => {
+  res.status(200).send("server is ready");
+});
+app.get("/_ah/start", (req: Request, res: Response) => {
+  res.status(200).send("OK");
 });
 
 app.listen(PORT, () => {
