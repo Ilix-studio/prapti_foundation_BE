@@ -81,7 +81,7 @@ adminSchema.methods.matchPassword = async function (
 // Sign JWT and return
 adminSchema.methods.getSignedJwtToken = function (): string {
   const options: SignOptions = {
-    expiresIn: "30",
+    expiresIn: "30d",
   };
 
   return jwt.sign({ id: this._id }, JWT_SECRET, options);

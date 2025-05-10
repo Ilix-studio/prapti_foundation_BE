@@ -10,14 +10,14 @@ const seedAdmin = asyncHandler(async (req, res) => {
   try {
     // Check if admin already exists
     const existingAdmin = await AdminModel.findOne({
-      email: "golaghat@hondamotorcycles.com",
+      email: "praptiFoundation@gmail.com",
     });
 
     if (!existingAdmin) {
       // Create admin user
       const admin = await AdminModel.create({
-        name: "ilix",
-        email: "golaghat@hondamotorcycles.com",
+        name: "prapti",
+        email: "praptiFoundation@gmail.com",
         password: "admin123",
       });
 

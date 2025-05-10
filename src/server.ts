@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import connectDB from "./config/dbConnection";
 import { errorHandler, routeNotFound } from "./middleware/errorMiddleware";
 import auth from "./routes/auth";
+import blogs from "./routes/blog";
 
 // Create Express application
 const app: Application = express();
@@ -24,7 +25,8 @@ app.listen(PORT, () => {
   console.log(`Listening to http://localhost:${PORT}`);
 });
 
-app.use("/api/adminLogin", auth);
+app.use("/api/admin", auth);
+app.use("/api/blogs", blogs);
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
