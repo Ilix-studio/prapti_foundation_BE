@@ -6,7 +6,8 @@ export interface IBlogPost extends Document {
   content: string;
   excerpt: string;
   category: string;
-  image: string;
+  imageUrl: string; // Cloudinary secure URL
+  imagePublicId: string; // Cloudinary public ID for deletion later
   author: string;
   createdAt: Date;
   updatedAt: Date;
@@ -41,9 +42,13 @@ const blogPostSchema: Schema = new Schema(
         "Rescue Stories",
       ],
     },
-    image: {
+    imageUrl: {
       type: String,
-      default: "/placeholder.svg?height=450&width=800",
+      required: true,
+    },
+    imagePublicId: {
+      type: String,
+      default: "",
     },
     author: {
       type: String,

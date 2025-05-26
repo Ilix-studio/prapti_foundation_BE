@@ -5,6 +5,7 @@ import connectDB from "./config/dbConnection";
 import { errorHandler, routeNotFound } from "./middleware/errorMiddleware";
 import auth from "./routes/auth";
 import blogs from "./routes/blog";
+import cloudinaryRoutes from "./routes/cloudinary";
 import corsOptions from "./config/corOptions";
 
 // Create Express application
@@ -34,6 +35,7 @@ app.listen(PORT, () => {
 
 app.use("/api/admin", auth);
 app.use("/api/blogs", blogs);
+app.use("/api/cloudinary", cloudinaryRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
