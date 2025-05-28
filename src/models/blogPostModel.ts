@@ -43,7 +43,6 @@ const blogPostSchema: Schema = new Schema(
     },
     image: {
       type: String,
-      default: "/placeholder.svg?height=450&width=800",
     },
     author: {
       type: String,
