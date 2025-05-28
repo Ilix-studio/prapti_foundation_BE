@@ -8,8 +8,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // Make sure JWT_SECRET has a default value
-const JWT_SECRET: Secret = process.env.JWT_SECRET || "your_fallback_secret_key";
-const JWT_EXPIRE = process.env.JWT_EXPIRE || "30d";
+const JWT_SECRET: Secret = process.env.JWT_SECRET || "";
 
 export interface IAdmin extends Document {
   name: string;
