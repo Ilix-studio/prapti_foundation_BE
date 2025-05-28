@@ -1,10 +1,9 @@
-// models/blogPostModel.ts
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IBlogPost extends Document {
   title: string;
-  content: string;
   excerpt: string;
+  content: string;
   category: string;
   image: string;
   author: string;
@@ -18,16 +17,17 @@ const blogPostSchema: Schema = new Schema(
       type: String,
       required: [true, "Please add a title"],
       trim: true,
-      maxlength: [200, "Title cannot be more than 200 characters"],
-    },
-    content: {
-      type: String,
-      required: [true, "Please add content"],
+      maxlength: [100, "Title cannot be more than 100 characters"],
     },
     excerpt: {
       type: String,
       required: [true, "Please add an excerpt"],
-      maxlength: [500, "Excerpt cannot be more than 500 characters"],
+      trim: true,
+      maxlength: [200, "Excerpt cannot be more than 200 characters"],
+    },
+    content: {
+      type: String,
+      required: [true, "Please add content"],
     },
     category: {
       type: String,
@@ -43,11 +43,11 @@ const blogPostSchema: Schema = new Schema(
     },
     image: {
       type: String,
+
     },
     author: {
       type: String,
-      required: [true, "Please add an author"],
-      default: "Admin",
+      default: "Prapti Foundation",
     },
   },
   {
@@ -55,5 +55,5 @@ const blogPostSchema: Schema = new Schema(
   }
 );
 
-const BlogPost = mongoose.model<IBlogPost>("BlogPost", blogPostSchema);
-export default BlogPost;
+const BlogPostModel = mongoose.model<IBlogPost>("BlogPost", blogPostSchema);
+export default BlogPostModel;
