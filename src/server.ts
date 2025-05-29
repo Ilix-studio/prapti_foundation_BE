@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import helmet from "helmet";
 import morgan from "morgan";
 import compression from "compression";
-import mongoSanitize from "express-mongo-sanitize";
+
 import connectDB from "./config/dbConnection";
 import { errorHandler, routeNotFound } from "./middleware/errorMiddleware";
 import auth from "./routes/auth";
@@ -21,7 +21,7 @@ const PORT = process.env.PORT || 8080;
 
 // Security middleware
 app.use(helmet());
-app.use(mongoSanitize());
+
 app.use(compression());
 
 //CORS
