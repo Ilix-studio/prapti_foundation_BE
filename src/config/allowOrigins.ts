@@ -4,6 +4,7 @@ const allowOrigins = [
   "https://prapti-foundation-site.vercel.app/",
   "https://prapti-foundation-site.vercel.app/admin/login",
   "https://prapti-foundation-site.vercel.app/admin/dashboard",
+  "https://prapti-foundation-site.vercel.app//blog",
 ];
 
 // Add environment-specific origins

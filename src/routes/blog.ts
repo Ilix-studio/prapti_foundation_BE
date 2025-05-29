@@ -19,34 +19,14 @@ import {
 const router = express.Router();
 
 // Public routes
-router.get("/", getBlogPost);
+router.get("/getAll", getBlogPost);
 router.get("/:id", validateBlogId, getBlogPostById);
 
 // Protected routes (admin only) with rate limiting and validation
-router.post(
-  "/create",
-  protect,
+router.post("/create", protect, validateBlogCreate, createBlogPost);
 
-  validateBlogCreate,
+router.put("/update/:id", protect, validateBlogUpdate, updateBlogPost);
 
-  createBlogPost
-);
-
-router.put(
-  "/update/:id",
-  protect,
-
-  validateBlogUpdate,
-
-  updateBlogPost
-);
-
-router.delete(
-  "/delete/:id",
-  protect,
-  validateBlogId,
-
-  deleteBlogPost
-);
+router.delete("/delete/:id", protect, validateBlogId, deleteBlogPost);
 
 export default router;
