@@ -14,21 +14,34 @@ export const generateSignature = asyncHandler(
     try {
       const { folder = "prapti-foundation-images" } = req.body;
 
+      // Check if Cloudinary env variables are properly set
+      const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+      const apiKey = process.env.CLOUDINARY_API_KEY;
+      const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+      if (!cloudName || !apiKey || !apiSecret) {
+        res.status(500).json({
+          success: false,
+          message: "Cloudinary configuration is missing on the server",
+        });
+        return; // Return without the response object
+      }
+
       // Create timestamp for the signature
       const timestamp = Math.round(new Date().getTime() / 1000);
 
       // Create the signature
       const signature = cloudinary.utils.api_sign_request(
         { timestamp, folder },
-        process.env.CLOUDINARY_API_SECRET || ""
+        apiSecret
       );
 
       // Return signature data to the client
       res.status(200).json({
         timestamp,
         signature,
-        cloudName: process.env.CLOUDINARY_CLOUD_NAME,
-        apiKey: process.env.CLOUDINARY_API_KEY,
+        cloudName,
+        apiKey,
         folder,
       });
     } catch (error: any) {
@@ -79,3 +92,11 @@ export const deleteCloudinaryImage = asyncHandler(
     }
   }
 );
+
+// Add this to your .env file to check if values are being loaded properly
+// SERVER SIDE:
+console.log("CLOUDINARY CONFIG:", {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET?.substring(0, 3) + "...",
+});
