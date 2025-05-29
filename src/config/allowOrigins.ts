@@ -4,12 +4,14 @@ const allowOrigins = [
   "https://prapti-foundation-site.vercel.app/",
   "https://prapti-foundation-site.vercel.app/admin/login",
   "https://prapti-foundation-site.vercel.app/admin/dashboard",
-  "https://prapti-foundation-site.vercel.app//blog",
+  "https://prapti-foundation-site.vercel.app/blog",
+  "https://prapti-foundation-be.onrender.com/api/blogs/getAll",
+  "",
 ];
 
 // Add environment-specific origins
-// if (process.env.NODE_ENV === "production" && process.env.FRONTEND_URL) {
-//   allowOrigins.push(process.env.FRONTEND_URL);
-// }
+if (process.env.NODE_ENV === "production" && process.env.FRONTEND_URL) {
+  allowOrigins.push(process.env.FRONTEND_URL);
+}
 
 export default allowOrigins;
