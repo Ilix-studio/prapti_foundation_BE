@@ -6,11 +6,9 @@ const allowOrigins = [
   "https://prapti-foundation-site.vercel.app/admin/dashboard",
 ];
 
-
 // Add environment-specific origins
-if (process.env.NODE_ENV === "production" && process.env.FRONTEND_URL) {
-  allowOrigins.push(process.env.FRONTEND_URL);
-}
-
+// if (process.env.NODE_ENV === "production" && process.env.FRONTEND_URL) {
+//   allowOrigins.push(process.env.FRONTEND_URL);
+// }
 
 export default allowOrigins;
