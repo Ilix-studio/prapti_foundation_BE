@@ -5,11 +5,20 @@
   "license": "ISC",
   "author": "",
   "type": "commonjs",
-  "main": "server.js",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "node src/server.ts",
+    "prebuild": "rimraf dist",
+    "build": "tsc",
+    "postbuild": "echo 'Build completed successfully'",
+    "start": "node dist/server.js",
+    "start:prod": "npm run build && npm start",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev:watch": "nodemon --exec ts-node src/server.ts",
     "server": "nodemon src/server.ts",
-    "build": "tsc"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "echo 'Linting not configured'",
+    "clean": "rimraf dist",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
