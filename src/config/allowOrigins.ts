@@ -1,6 +1,10 @@
 const allowOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
+  "https://www.praptifoundation.in/",
+  "https://www.praptifoundation.in/admin/login",
+  "https://www.praptifoundation.in/admin/dashboard",
+  "https://www.praptifoundation.in/blog",
   "https://prapti-foundation-site.vercel.app",
   "https://prapti-foundation-site.vercel.app/admin/login",
   "https://prapti-foundation-site.vercel.app/admin/dashboard",
