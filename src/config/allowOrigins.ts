@@ -1,6 +1,7 @@
 const allowOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
+  "https://www.praptifoundation.in",
   "https://www.praptifoundation.in/",
   "https://www.praptifoundation.in/admin/login",
   "https://www.praptifoundation.in/admin/dashboard",
