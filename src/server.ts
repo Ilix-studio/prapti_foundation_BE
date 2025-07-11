@@ -56,6 +56,11 @@ app.get("/_ah/start", (req: Request, res: Response) => {
   res.status(200).send("OK");
 });
 
+// Handle favicon.ico requests silently
+app.get("/favicon.ico", (req: Request, res: Response) => {
+  res.status(204).end();
+});
+
 app.listen(PORT, () => {
   console.log(`Listening to http://localhost:${PORT}`);
 });
