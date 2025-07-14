@@ -10,6 +10,7 @@ import { errorHandler, routeNotFound } from "./middleware/errorMiddleware";
 import auth from "./routes/auth";
 import blogs from "./routes/blog";
 import cloudinaryRoutes from "./routes/cloudinary";
+import volunteerRoutes from "./routes/volunteer";
 import corsOptions from "./config/corOptions";
 import logger from "./utils/logger";
 
@@ -68,11 +69,26 @@ app.listen(PORT, () => {
 app.use("/api/admin", auth);
 app.use("/api/blogs", blogs);
 app.use("/api/cloudinary", cloudinaryRoutes);
+app.use("/api/volunteers", volunteerRoutes);
 
-// Error handling middleware
+// Global error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ error: "Something went wrong!" });
+  console.error("Global error handler:", {
+    message: err.message,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    timestamp: new Date().toISOString(),
+  });
+
+  res.status(500).json({
+    success: false,
+    error: "Something went wrong!",
+    message:
+      process.env.NODE_ENV === "development"
+        ? err.message
+        : "Internal server error",
+  });
 });
 
 // Centralized Error Handler
