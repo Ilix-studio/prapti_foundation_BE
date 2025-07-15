@@ -5,14 +5,15 @@ import helmet from "helmet";
 import morgan from "morgan";
 import compression from "compression";
 
+import corsOptions from "./config/corOptions";
+import logger from "./utils/logger";
 import connectDB from "./config/dbConnection";
 import { errorHandler, routeNotFound } from "./middleware/errorMiddleware";
 import auth from "./routes/auth";
 import blogs from "./routes/blog";
 import cloudinaryRoutes from "./routes/cloudinary";
 import volunteerRoutes from "./routes/volunteer";
-import corsOptions from "./config/corOptions";
-import logger from "./utils/logger";
+import contactRoutes from "./routes/contact";
 
 // Create Express application
 const app: Application = express();
@@ -22,7 +23,6 @@ const PORT = process.env.PORT || 8080;
 
 // Security middleware
 app.use(helmet());
-
 app.use(compression());
 
 //CORS
@@ -37,9 +37,6 @@ app.use(
     stream: { write: (message: string) => logger.info(message.trim()) },
   })
 );
-
-// Apply general rate limiting to all routes
-// app.use(generalLimiter);
 
 // Health check endpoints (no rate limiting)
 app.get("/", (req: Request, res: Response) => {
@@ -70,6 +67,7 @@ app.use("/api/admin", auth);
 app.use("/api/blogs", blogs);
 app.use("/api/cloudinary", cloudinaryRoutes);
 app.use("/api/volunteers", volunteerRoutes);
+app.use("/api/messages", contactRoutes);
 
 // Global error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
