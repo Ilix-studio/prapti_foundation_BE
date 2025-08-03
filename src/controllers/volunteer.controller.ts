@@ -1,6 +1,6 @@
 import asyncHandler from "express-async-handler";
 import { Request, Response } from "express";
-import { VolunteerModel } from "../models/volunteer.model";
+import { VolunteerModel } from "../models/volunteerModel";
 import logger from "../utils/logger";
 
 export const createVolunteer = asyncHandler(

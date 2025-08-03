@@ -21,6 +21,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@types/multer": "^2.0.0",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.6.1",
@@ -36,6 +37,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.14.0",
     "morgan": "^1.10.0",
+    "multer": "^2.0.2",
     "typescript": "^5.8.3",
     "winston": "^3.17.0"
   },
