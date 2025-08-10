@@ -14,6 +14,11 @@ import blogs from "./routes/blog";
 import cloudinaryRoutes from "./routes/cloudinary";
 import volunteerRoutes from "./routes/volunteer";
 import contactRoutes from "./routes/contact";
+//updated
+import categoryRoutes from "./routes/category";
+import photosRoutes from "./routes/photos";
+import videosRoutes from "./routes/video";
+import visitorRoutes from "./routes/visitor";
 
 // Create Express application
 const app: Application = express();
@@ -68,6 +73,11 @@ app.use("/api/blogs", blogs);
 app.use("/api/cloudinary", cloudinaryRoutes);
 app.use("/api/volunteers", volunteerRoutes);
 app.use("/api/messages", contactRoutes);
+//
+app.use("/api/categories", categoryRoutes);
+app.use("/api/photos", photosRoutes);
+app.use("/api/videos", videosRoutes);
+app.use("/api/visitor", visitorRoutes);
 
 // Global error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
