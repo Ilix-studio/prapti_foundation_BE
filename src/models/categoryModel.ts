@@ -20,8 +20,8 @@ const categorySchema: Schema<ICategory> = new Schema(
       type: String,
       required: [true, "Category type is required"],
       enum: {
-        values: ["photo", "video", "press"],
-        message: "Type must be one of: photo, video, press",
+        values: ["photo", "video", "blogs"],
+        message: "Type must be one of: photo, video, blogs",
       },
     },
   },
