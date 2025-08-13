@@ -5,11 +5,12 @@ export interface ITotalImpact extends Document {
   dogsRescued: number;
   dogsAdopted: number;
   volunteers: number;
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
-const TotalImpactSchema: Schema = new Schema(
+const totalImpactSchema: Schema = new Schema(
   {
     dogsRescued: {
       type: Number,
@@ -29,13 +30,26 @@ const TotalImpactSchema: Schema = new Schema(
       min: 0,
       default: 0,
     },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
   }
 );
+// Virtual for adoption rate
+totalImpactSchema.virtual("adoptionRate").get(function (this: ITotalImpact) {
+  if (this.dogsRescued === 0) return 0;
+  return Math.round((this.dogsAdopted / this.dogsRescued) * 100);
+});
+// Index for better query performance
+totalImpactSchema.index({ isActive: 1, createdAt: -1 });
 
 export const TotalImpactModel = mongoose.model<ITotalImpact>(
   "TotalImpact",
-  TotalImpactSchema
+  totalImpactSchema
 );
