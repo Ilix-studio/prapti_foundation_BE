@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from "express";
 import logger from "../utils/logger";
 import cloudinary from "../config/cloudinaryConfig";
 import BlogPostModel from "../models/blogModel";
+import mongoose from "mongoose";
 
 /**
  * @desc    Get all blog posts
@@ -13,7 +14,9 @@ import BlogPostModel from "../models/blogModel";
 export const getBlogPost = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const blogs = await BlogPostModel.find({}).sort({ createdAt: -1 });
+      const blogs = await BlogPostModel.find({})
+        .populate("category", "name type")
+        .sort({ createdAt: -1 });
 
       res.status(200).json(blogs);
     } catch (error: any) {
@@ -45,7 +48,10 @@ export const getBlogPostById = asyncHandler(
         return;
       }
 
-      const blog = await BlogPostModel.findById(id);
+      const blog = await BlogPostModel.findById(id).populate(
+        "category",
+        "name type"
+      );
 
       if (!blog) {
         res.status(404).json({
@@ -86,15 +92,65 @@ export const createBlogPost = asyncHandler(
         return;
       }
 
+      // Debug logging
+      console.log("Received category value:", category, typeof category);
+
+      // Validate category exists and is type "blogs"
+      if (!category || typeof category !== "string") {
+        res.status(400);
+        throw new Error("Category is required and must be a string");
+      }
+
+      // Try to find by ObjectId first, if that fails, try by name
+      let categoryDoc;
+      let categoryId = category; // Use a separate variable for the actual ID
+
+      try {
+        // First attempt: find by ObjectId
+        const CategoryModel = require("../models/categoryModel").default;
+        categoryDoc = await CategoryModel.findOne({
+          _id: category,
+          type: "blogs",
+        });
+      } catch (error) {
+        // If ObjectId cast fails, category might be a name instead of ID
+        console.log("ObjectId cast failed, trying to find by name:", category);
+      }
+
+      // If not found by ID, try to find by name
+      if (!categoryDoc) {
+        const CategoryModel = require("../models/categoryModel").default;
+        categoryDoc = await CategoryModel.findOne({
+          name: category,
+          type: "blogs",
+        });
+
+        if (categoryDoc) {
+          console.log("Found category by name, using ID:", categoryDoc._id);
+          // Update the categoryId variable to use the correct ObjectId
+          categoryId = categoryDoc._id.toString();
+        }
+      }
+
+      if (!categoryDoc) {
+        res.status(400);
+        throw new Error(
+          `Invalid blog category: ${category}. Please ensure the category exists and is of type 'blogs'.`
+        );
+      }
+
       // Create blog post
       const blog = await BlogPostModel.create({
         title,
         excerpt,
         content,
-        category,
+        category: categoryId, // Use the resolved category ID
         image: image || "",
         author: req.user?.name || "Prapti Foundation",
       });
+
+      // Populate the category before returning
+      await blog.populate("category", "name type");
 
       logger.info(`New blog post created: ${blog.title} by ${req.user?.email}`);
 
@@ -144,14 +200,70 @@ export const updateBlogPost = asyncHandler(
         return;
       }
 
-      // Update fields
-      blog.title = title || blog.title;
-      blog.excerpt = excerpt || blog.excerpt;
-      blog.content = content || blog.content;
-      blog.category = category || blog.category;
-      blog.image = image || blog.image;
+      // Handle category update if provided
+      if (category !== undefined) {
+        // Debug logging
+        console.log("Received category value:", category, typeof category);
+
+        if (!category || typeof category !== "string") {
+          res.status(400);
+          throw new Error("Category must be a string");
+        }
+
+        // Try to find by ObjectId first, if that fails, try by name
+        let categoryDoc;
+        let categoryId = category;
+
+        try {
+          // First attempt: find by ObjectId
+          const CategoryModel = require("../models/categoryModel").default;
+          categoryDoc = await CategoryModel.findOne({
+            _id: category,
+            type: "blogs",
+          });
+        } catch (error) {
+          // If ObjectId cast fails, category might be a name instead of ID
+          console.log(
+            "ObjectId cast failed, trying to find by name:",
+            category
+          );
+        }
+
+        // If not found by ID, try to find by name
+        if (!categoryDoc) {
+          const CategoryModel = require("../models/categoryModel").default;
+          categoryDoc = await CategoryModel.findOne({
+            name: category,
+            type: "blogs",
+          });
+
+          if (categoryDoc) {
+            console.log("Found category by name, using ID:", categoryDoc._id);
+            categoryId = categoryDoc._id.toString();
+          }
+        }
+
+        if (!categoryDoc) {
+          res.status(400);
+          throw new Error(
+            `Invalid blog category: ${category}. Please ensure the category exists and is of type 'blogs'.`
+          );
+        }
+
+        // Update with resolved category ID
+        blog.category = new mongoose.Types.ObjectId(categoryId);
+      }
+
+      // Update other fields
+      if (title !== undefined) blog.title = title;
+      if (excerpt !== undefined) blog.excerpt = excerpt;
+      if (content !== undefined) blog.content = content;
+      if (image !== undefined) blog.image = image;
 
       await blog.save();
+
+      // Populate the category before returning
+      await blog.populate("category", "name type");
 
       logger.info(`Blog post updated: ${blog.title} by ${req.user?.email}`);
 

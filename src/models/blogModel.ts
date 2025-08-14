@@ -4,7 +4,7 @@ export interface IBlogPost extends Document {
   title: string;
   excerpt: string;
   content: string;
-  category: string;
+  category: mongoose.Types.ObjectId;
   image: string;
   author: string;
   createdAt: Date;
@@ -17,29 +17,33 @@ const blogPostSchema: Schema = new Schema(
       type: String,
       required: [true, "Please add a title"],
       trim: true,
-      maxlength: [100, "Title cannot be more than 100 characters"],
+      maxlength: [200, "Title cannot be more than 200 characters"],
     },
     excerpt: {
       type: String,
       required: [true, "Please add an excerpt"],
       trim: true,
-      maxlength: [200, "Excerpt cannot be more than 200 characters"],
+      maxlength: [500, "Excerpt cannot be more than 500 characters"],
     },
     content: {
       type: String,
       required: [true, "Please add content"],
     },
     category: {
-      type: String,
+      type: Schema.Types.ObjectId,
+      ref: "Category",
       required: [true, "Please add a category"],
-      enum: [
-        "Adoption Stories",
-        "Dog Care",
-        "Training Tips",
-        "Shelter News",
-        "Health & Wellness",
-        "Rescue Stories",
-      ],
+      validate: {
+        validator: async function (value: mongoose.Types.ObjectId) {
+          const CategoryModel = mongoose.model("Category");
+          const category = await CategoryModel.findOne({
+            _id: value,
+            type: "blogs",
+          });
+          return !!category;
+        },
+        message: "Invalid blog category",
+      },
     },
     image: {
       type: String,
@@ -54,6 +58,10 @@ const blogPostSchema: Schema = new Schema(
     timestamps: true,
   }
 );
+
+// Indexes for better query performance
+blogPostSchema.index({ category: 1 });
+blogPostSchema.index({ createdAt: -1 });
 
 const BlogPostModel = mongoose.model<IBlogPost>("BlogPost", blogPostSchema);
 export default BlogPostModel;
