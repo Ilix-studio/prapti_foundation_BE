@@ -21,6 +21,7 @@ import videosRoutes from "./routes/video";
 import visitorRoutes from "./routes/visitor";
 //new
 import impactRoutes from "./routes/impact";
+import testimonialsRoutes from "./routes/testimonials";
 
 // Create Express application
 const app: Application = express();
@@ -82,6 +83,7 @@ app.use("/api/videos", videosRoutes);
 app.use("/api/visitor", visitorRoutes);
 //
 app.use("/api/impact", impactRoutes);
+app.use("/api/testimonials", testimonialsRoutes);
 
 // Global error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
