@@ -2,7 +2,6 @@ import mongoose, { Document, Schema } from "mongoose";
 
 export interface IBlogPost extends Document {
   title: string;
-  excerpt: string;
   content: string;
   category: mongoose.Types.ObjectId;
   image: string;
@@ -18,12 +17,6 @@ const blogPostSchema: Schema = new Schema(
       required: [true, "Please add a title"],
       trim: true,
       maxlength: [200, "Title cannot be more than 200 characters"],
-    },
-    excerpt: {
-      type: String,
-      required: [true, "Please add an excerpt"],
-      trim: true,
-      maxlength: [500, "Excerpt cannot be more than 500 characters"],
     },
     content: {
       type: String,

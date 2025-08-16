@@ -81,10 +81,10 @@ export const getBlogPostById = asyncHandler(
 export const createBlogPost = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { title, excerpt, content, category, image } = req.body;
+      const { title, content, category, image } = req.body;
 
       // Validation
-      if (!title || !excerpt || !content || !category) {
+      if (!title || !content || !category) {
         res.status(400).json({
           success: false,
           message: "Please provide all required fields",
@@ -142,7 +142,6 @@ export const createBlogPost = asyncHandler(
       // Create blog post
       const blog = await BlogPostModel.create({
         title,
-        excerpt,
         content,
         category: categoryId, // Use the resolved category ID
         image: image || "",
@@ -179,7 +178,7 @@ export const updateBlogPost = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const { title, excerpt, content, category, image } = req.body;
+      const { title, content, category, image } = req.body;
 
       if (!id) {
         res.status(400).json({
@@ -256,7 +255,6 @@ export const updateBlogPost = asyncHandler(
 
       // Update other fields
       if (title !== undefined) blog.title = title;
-      if (excerpt !== undefined) blog.excerpt = excerpt;
       if (content !== undefined) blog.content = content;
       if (image !== undefined) blog.image = image;
 
