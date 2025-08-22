@@ -105,12 +105,12 @@ export const deleteCategory = asyncHandler(
     // Check if category is being used
     const PhotoModel = require("../models/photoModel").default;
     const VideoModel = require("../models/videoModel").default;
-    // const PressModel = require("../models/pressModel").default;
+    const BlogsModel = require("../models/blogModel").default;
 
     const isUsed = await Promise.all([
       PhotoModel.findOne({ category: req.params.id }),
       VideoModel.findOne({ category: req.params.id }),
-      // PressModel.findOne({ category: req.params.id }),
+      BlogsModel.findOne({ category: req.params.id }),
     ]);
 
     if (isUsed.some((result) => result)) {

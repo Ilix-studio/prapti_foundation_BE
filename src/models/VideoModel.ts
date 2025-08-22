@@ -109,5 +109,6 @@ videoSchema.index({ category: 1, date: -1 });
 videoSchema.index({ isActive: 1, date: -1 });
 videoSchema.index({ title: "text", description: "text" });
 
-const VideoModel = mongoose.model<IVideo>("Video", videoSchema);
+const VideoModel =
+  mongoose.models.Video || mongoose.model<IVideo>("Video", videoSchema);
 export default VideoModel;
