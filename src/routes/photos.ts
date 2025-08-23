@@ -6,6 +6,7 @@ import {
   getPhotos,
   getPhoto,
   updatePhoto,
+  updatePhotoWithFile, // Add this import
   deletePhoto,
 } from "../controllers/photoController";
 import { protect } from "../middleware/authMiddleware";
@@ -38,7 +39,18 @@ router.post(
   uploadMultiplePhotos
 );
 
-router.put("/:id", protect, updatePhoto);
+// Update photo metadata only (JSON)
+router.patch("/:id", protect, updatePhoto);
+
+// Update photo with file upload (form-data)
+router.patch(
+  "/:id/upload",
+  protect,
+  photoUploadConfig.single("photo"),
+  handleMulterError,
+  updatePhotoWithFile
+);
+
 router.delete("/:id", protect, deletePhoto);
 
 export default router;
