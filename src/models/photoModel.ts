@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema, Types } from "mongoose";
 
 // Interface for individual image
-interface IImage {
+export interface IImage {
   src: string;
   alt: string;
   cloudinaryPublicId: string;
@@ -20,7 +20,7 @@ export interface IPhoto extends Document {
 }
 
 // Image schema
-const imageSchema = new Schema<IImage>({
+export const imageSchema = new Schema<IImage>({
   src: {
     type: String,
     required: [true, "Image URL is required"],

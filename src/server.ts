@@ -22,6 +22,9 @@ import visitorRoutes from "./routes/visitor";
 //new
 import impactRoutes from "./routes/impact";
 import testimonialsRoutes from "./routes/testimonials";
+//
+import awardsRoutes from "./routes/awards";
+import rescueRoutes from "./routes/rescue";
 
 // Create Express application
 const app: Application = express();
@@ -84,6 +87,9 @@ app.use("/api/visitor", visitorRoutes);
 //
 app.use("/api/impact", impactRoutes);
 app.use("/api/testimonials", testimonialsRoutes);
+//
+app.use("/api/awards", awardsRoutes);
+app.use("/api/rescue", rescueRoutes);
 
 // Global error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
