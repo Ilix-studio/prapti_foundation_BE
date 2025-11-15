@@ -6,9 +6,11 @@ import {
   getByIdAwardPost,
   updateAwardPost,
 } from "../controllers/award.controller";
+import { protect } from "../middleware/authMiddleware";
 const router = express.Router();
 
-router.post("/create", createAwardPost);
+router.post("/create", protect, createAwardPost);
+
 router.get("/get", getAwardPost);
 router.get("/get/:id", getByIdAwardPost);
 router.patch("/update/:id", updateAwardPost);
