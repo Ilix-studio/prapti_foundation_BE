@@ -5,10 +5,32 @@ import {
   getAwardPost,
   getByIdAwardPost,
   updateAwardPost,
+  uploadAward,
+  uploadMultipleAwards,
 } from "../controllers/award.controller";
+import { protect } from "../middleware/authMiddleware";
+import { handleMulterError, photoUploadConfig } from "../config/multerConfig";
 const router = express.Router();
 
-router.post("/create", createAwardPost);
+router.post("/create", protect, createAwardPost);
+// Single photo upload
+router.post(
+  "/upload",
+  protect,
+  photoUploadConfig.single("photo"),
+  handleMulterError,
+  uploadAward
+);
+
+// Multiple photos upload
+router.post(
+  "/upload-multiple",
+  protect,
+  photoUploadConfig.array("photos", 10), // Max 10 photos
+  handleMulterError,
+  uploadMultipleAwards
+);
+
 router.get("/get", getAwardPost);
 router.get("/get/:id", getByIdAwardPost);
 router.patch("/update/:id", updateAwardPost);
