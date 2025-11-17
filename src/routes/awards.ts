@@ -17,7 +17,7 @@ router.post("/create", protect, createAwardPost);
 router.post(
   "/upload",
   protect,
-  photoUploadConfig.single("photo"),
+  photoUploadConfig.single("image"),
   handleMulterError,
   uploadAward
 );
@@ -26,7 +26,7 @@ router.post(
 router.post(
   "/upload-multiple",
   protect,
-  photoUploadConfig.array("photos", 10), // Max 10 photos
+  photoUploadConfig.array("images", 10), // Max 10 photos
   handleMulterError,
   uploadMultipleAwards
 );

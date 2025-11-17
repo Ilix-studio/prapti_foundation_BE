@@ -31,7 +31,7 @@ const awardPostSchema: Schema = new Schema(
           const CategoryModel = mongoose.model("Category");
           const category = await CategoryModel.findOne({
             _id: value,
-            type: "awards",
+            type: "award",
           });
           return !!category;
         },
