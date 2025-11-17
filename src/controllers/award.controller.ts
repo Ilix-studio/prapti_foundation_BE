@@ -4,6 +4,7 @@ import CategoryModel from "../models/categoryModel";
 import AwardPostModel from "../models/awardModel";
 import cloudinary from "../config/cloudinaryConfig";
 import logger from "../utils/logger";
+import { Types } from "mongoose";
 
 /**
  * @desc    Get all award posts
@@ -12,70 +13,20 @@ import logger from "../utils/logger";
  */
 export const getAwardPost = asyncHandler(
   async (req: Request, res: Response) => {
-    const {
-      page = 1,
-      limit = 2,
-      category,
-      search,
-      sortBy = "createdAt",
-      sortOrder = "desc",
-    } = req.query;
-    const pageNum = parseInt(page as string, 10);
-    const limitNum = parseInt(limit as string, 10);
-    const skip = (pageNum - 1) * limitNum;
-
-    // Build filter object
-    const filter: any = { isActive: true };
-
-    if (category && category !== "all") {
-      // Try to resolve category name to ObjectId
-      const categoryDoc = await CategoryModel.findOne({
-        name: category,
-        type: "photo",
-      });
-
-      if (!categoryDoc) {
-        res.status(400);
-        throw new Error(`Invalid category: ${category}`);
-      }
-
-      filter.category = categoryDoc._id;
-    }
-    if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { location: { $regex: search, $options: "i" } },
-        { "images.alt": { $regex: search, $options: "i" } },
-      ];
-    }
-    // Build sort object
-    const sort: any = {};
-    sort[sortBy as string] = sortOrder === "asc" ? 1 : -1;
-
-    const [photos, total] = await Promise.all([
-      AwardPostModel.find(filter)
+    try {
+      const blogs = await AwardPostModel.find({})
         .populate("category", "name type")
-        .sort(sort)
-        .skip(skip)
-        .limit(limitNum)
-        .lean(),
-      AwardPostModel.countDocuments(filter),
-    ]);
-    const totalPages = Math.ceil(total / limitNum);
-    res.status(200).json({
-      success: true,
-      data: {
-        photos,
-        pagination: {
-          current: pageNum,
-          pages: totalPages,
-          total,
-          hasNext: pageNum < totalPages,
-          hasPrev: pageNum > 1,
-        },
-      },
-    });
+        .sort({ createdAt: -1 });
+
+      res.status(200).json(blogs);
+    } catch (error: any) {
+      logger.error("Error fetching Award posts:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error fetching Award posts",
+        error: error.message,
+      });
+    }
   }
 );
 /**
@@ -162,50 +113,43 @@ export const uploadAward = asyncHandler(async (req: Request, res: Response) => {
 
   const { alt, title, category, description } = req.body;
 
-  // Validate category exists and is type "award"
+  // Validate required fields
+  if (!title || typeof title !== "string") {
+    res.status(400);
+    throw new Error("Title is required and must be a string");
+  }
+
   if (!category || typeof category !== "string") {
     res.status(400);
     throw new Error("Category is required and must be a string");
   }
 
-  // Try to find by ObjectId first, if that fails, try by name
+  // Find category by ID or name
   let categoryDoc;
-  let categoryId = category; // Use a separate variable for the actual ID
 
-  try {
-    // First attempt: find by ObjectId
+  if (Types.ObjectId.isValid(category)) {
     categoryDoc = await CategoryModel.findOne({
       _id: category,
       type: "award",
     });
-  } catch (error) {
-    // If ObjectId cast fails, category might be a name instead of ID
-    console.log("ObjectId cast failed, trying to find by name:", category);
   }
 
-  // If not found by ID, try to find by name
   if (!categoryDoc) {
     categoryDoc = await CategoryModel.findOne({
       name: category,
       type: "award",
     });
-
-    if (categoryDoc) {
-      console.log("Found category by name, using ID:", categoryDoc._id);
-      // Use the correct ObjectId for database insertion
-      categoryId = categoryDoc._id.toString();
-    }
   }
 
   if (!categoryDoc) {
     res.status(400);
     throw new Error(
-      `Invalid award category: ${category}. Please ensure the category exists and is of type 'award'.`
+      `Invalid award category: ${category}. Category must exist and be of type 'award'.`
     );
   }
 
   // Upload to Cloudinary
-  const cloudinaryResult = await new Promise((resolve, reject) => {
+  const uploadResult = await new Promise<any>((resolve, reject) => {
     cloudinary.uploader
       .upload_stream(
         {
@@ -225,9 +169,7 @@ export const uploadAward = asyncHandler(async (req: Request, res: Response) => {
       .end(req.file!.buffer);
   });
 
-  const uploadResult = cloudinaryResult as any;
-
-  // Create award record with single image
+  // Create award record
   const award = await AwardPostModel.create({
     images: [
       {
@@ -237,7 +179,7 @@ export const uploadAward = asyncHandler(async (req: Request, res: Response) => {
       },
     ],
     title,
-    category: categoryId, // Use the resolved category ID
+    category: categoryDoc._id,
     description: description || undefined,
   });
 
@@ -245,7 +187,7 @@ export const uploadAward = asyncHandler(async (req: Request, res: Response) => {
 
   res.status(201).json({
     success: true,
-    message: "award uploaded successfully",
+    message: "Award uploaded successfully",
     data: {
       award,
       imagesCount: 1,
