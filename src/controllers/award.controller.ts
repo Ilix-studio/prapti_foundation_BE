@@ -14,11 +14,11 @@ import { Types } from "mongoose";
 export const getAwardPost = asyncHandler(
   async (req: Request, res: Response) => {
     try {
-      const blogs = await AwardPostModel.find({})
+      const awards = await AwardPostModel.find({})
         .populate("category", "name type")
         .sort({ createdAt: -1 });
 
-      res.status(200).json(blogs);
+      res.status(200).json(awards);
     } catch (error: any) {
       logger.error("Error fetching Award posts:", error);
       res.status(500).json({
@@ -317,22 +317,7 @@ export const uploadMultipleAwards = asyncHandler(
     });
   }
 );
-/**
- * @desc    Update all award posts
- * @route   Update /api/awards
- * @access  Public
- */
-export const updateAwardPost = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {}
-);
-/**
- * @desc    Delete all award posts
- * @route   DEL /api/awards
- * @access  Public
- */
-export const delAwardPost = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {}
-);
+
 /**
  * @desc    GetBy all award posts
  * @route   GET /api/awards/:id
@@ -373,5 +358,232 @@ export const getByIdAwardPost = asyncHandler(
         error: error.message,
       });
     }
+  }
+);
+/**
+ * @desc    Update award post with image management
+ * @route   PATCH /api/awards/update/:id
+ * @access  Private (Admin only)
+ */
+export const updateAwardPost = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+    const { title, description, category, imageAction, imageIndex, imageAlt } =
+      req.body;
+
+    if (!Types.ObjectId.isValid(id)) {
+      res.status(400);
+      throw new Error("Invalid award ID format");
+    }
+
+    const award = await AwardPostModel.findById(id);
+    if (!award) {
+      res.status(404);
+      throw new Error("Award post not found");
+    }
+
+    // Handle image operations
+    if (imageAction) {
+      switch (imageAction) {
+        case "add":
+          if (!req.file) {
+            res.status(400);
+            throw new Error("No file uploaded for image addition");
+          }
+
+          if (award.images.length >= 10) {
+            res.status(400);
+            throw new Error("Maximum 10 images allowed per award");
+          }
+
+          const uploadResult = await new Promise<any>((resolve, reject) => {
+            cloudinary.uploader
+              .upload_stream(
+                {
+                  folder: "prapti-foundation-awards",
+                  resource_type: "image",
+                  transformation: [
+                    { width: 1200, height: 800, crop: "limit" },
+                    { quality: "auto" },
+                    { format: "auto" },
+                  ],
+                },
+                (error, result) => {
+                  if (error) reject(error);
+                  else resolve(result);
+                }
+              )
+              .end(req.file!.buffer);
+          });
+
+          award.images.push({
+            src: uploadResult.secure_url,
+            alt: imageAlt || award.title,
+            cloudinaryPublicId: uploadResult.public_id,
+          });
+          break;
+
+        case "delete":
+          const index = parseInt(imageIndex);
+          if (isNaN(index) || index < 0 || index >= award.images.length) {
+            res.status(400);
+            throw new Error("Invalid image index");
+          }
+
+          if (award.images.length === 1) {
+            res.status(400);
+            throw new Error("Cannot delete the last image");
+          }
+
+          const imageToDelete = award.images[index];
+          try {
+            await cloudinary.uploader.destroy(imageToDelete.cloudinaryPublicId);
+            logger.info(`Deleted image: ${imageToDelete.cloudinaryPublicId}`);
+          } catch (error) {
+            logger.error(`Cloudinary deletion failed: ${error}`);
+          }
+
+          award.images.splice(index, 1);
+          break;
+
+        case "updateAlt":
+          const altIndex = parseInt(imageIndex);
+          if (
+            isNaN(altIndex) ||
+            altIndex < 0 ||
+            altIndex >= award.images.length
+          ) {
+            res.status(400);
+            throw new Error("Invalid image index");
+          }
+
+          if (!imageAlt) {
+            res.status(400);
+            throw new Error("Alt text is required");
+          }
+
+          award.images[altIndex].alt = imageAlt;
+          break;
+
+        default:
+          res.status(400);
+          throw new Error(
+            "Invalid image action. Use: add, delete, or updateAlt"
+          );
+      }
+    }
+
+    // Handle category update
+    if (category !== undefined) {
+      if (!category || typeof category !== "string") {
+        res.status(400);
+        throw new Error("Category must be a string");
+      }
+
+      let categoryDoc;
+      try {
+        categoryDoc = await CategoryModel.findOne({
+          _id: category,
+          type: "award",
+        });
+      } catch (error) {
+        // Try by name if ObjectId fails
+      }
+
+      if (!categoryDoc) {
+        categoryDoc = await CategoryModel.findOne({
+          name: category,
+          type: "award",
+        });
+      }
+
+      if (!categoryDoc) {
+        res.status(400);
+        throw new Error(`Invalid award category: ${category}`);
+      }
+
+      award.category = new Types.ObjectId(categoryDoc._id);
+    }
+
+    // Update other fields
+    if (title !== undefined) award.title = title;
+    if (description !== undefined) award.description = description;
+
+    try {
+      const updatedAward = await award.save();
+      await updatedAward.populate("category", "name type");
+
+      logger.info(`Award updated: ${updatedAward.title}`);
+
+      res.status(200).json({
+        success: true,
+        message: "Award updated successfully",
+        data: updatedAward,
+      });
+    } catch (error: any) {
+      if (error.name === "ValidationError") {
+        const validationErrors = Object.values(error.errors).map(
+          (err: any) => err.message
+        );
+        res.status(400);
+        throw new Error(`Validation error: ${validationErrors.join(", ")}`);
+      }
+      throw error;
+    }
+  }
+);
+
+/**
+ * @desc    Delete all award posts
+ * @route   DELETE /api/awards/del/:id
+ * @access  Private (Admin only)
+ */
+export const delAwardPost = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { id } = req.params;
+
+    // Validate ObjectId format
+    if (!Types.ObjectId.isValid(id)) {
+      res.status(400);
+      throw new Error("Invalid award ID format");
+    }
+
+    const award = await AwardPostModel.findById(id);
+    if (!award) {
+      res.status(404);
+      throw new Error("Award post not found");
+    }
+
+    // Delete all images from Cloudinary
+    const deletePromises = award.images.map(async (image) => {
+      try {
+        if (image.cloudinaryPublicId) {
+          const deleteResult = await cloudinary.uploader.destroy(
+            image.cloudinaryPublicId
+          );
+          logger.info(
+            `Deleted image from Cloudinary: ${image.cloudinaryPublicId}, result: ${deleteResult.result}`
+          );
+        }
+      } catch (cloudinaryError) {
+        // Log error but don't fail the deletion
+        logger.error(
+          `Failed to delete image from Cloudinary: ${cloudinaryError}`
+        );
+      }
+    });
+
+    // Wait for all Cloudinary deletions to complete
+    await Promise.allSettled(deletePromises);
+
+    // Delete from database
+    await AwardPostModel.findByIdAndDelete(id);
+
+    logger.info(`Award post deleted: ${award.title}`);
+
+    res.status(200).json({
+      success: true,
+      message: "Award post deleted successfully",
+    });
   }
 );
