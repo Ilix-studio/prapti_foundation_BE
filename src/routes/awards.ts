@@ -33,7 +33,7 @@ router.post(
 
 router.get("/get", getAwardPost);
 router.get("/get/:id", getByIdAwardPost);
-router.patch("/update/:id", updateAwardPost);
+router.put("/update/:id", updateAwardPost);
 router.delete("/del/:id", delAwardPost);
 
 export default router;
