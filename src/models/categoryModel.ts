@@ -4,7 +4,7 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface ICategory extends Document {
   _id: string;
   name: string;
-  type: "photo" | "video" | "blogs" | "award";
+  type: "photo" | "video" | "blogs" | "award" | "rescue";
   createdAt: Date;
 }
 
@@ -20,7 +20,7 @@ const categorySchema: Schema<ICategory> = new Schema(
       type: String,
       required: [true, "Category type is required"],
       enum: {
-        values: ["photo", "video", "blogs", "award"],
+        values: ["photo", "video", "blogs", "award", "rescue"],
         message: "Type must be one of: photo, video, blogs, award",
       },
     },

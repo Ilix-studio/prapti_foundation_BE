@@ -44,16 +44,6 @@ export const photoUploadConfig = multer({
   fileFilter: imageFileFilter,
 });
 
-// Enhanced multer configuration for press uploads
-export const pressUploadConfig = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit per image
-    files: 5, // Maximum 5 images for press articles
-  },
-  fileFilter: imageFileFilter,
-});
-
 // Video upload config remains the same
 export const videoUploadConfig = multer({
   storage: multer.memoryStorage(),

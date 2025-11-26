@@ -11,7 +11,7 @@ export const getCategoriesByType = asyncHandler(
   async (req: Request, res: Response) => {
     const { type } = req.params;
 
-    if (!["photo", "video", "blogs"].includes(type)) {
+    if (!["photo", "video", "blogs", "award", "rescue"].includes(type)) {
       res.status(400);
       throw new Error("Invalid category type");
     }
@@ -106,11 +106,15 @@ export const deleteCategory = asyncHandler(
     const PhotoModel = require("../models/photoModel").default;
     const VideoModel = require("../models/videoModel").default;
     const BlogsModel = require("../models/blogModel").default;
+    const AwardModel = require("../models/awardModel").default;
+    const RescueModel = require("../models/rescueModel").default;
 
     const isUsed = await Promise.all([
       PhotoModel.findOne({ category: req.params.id }),
       VideoModel.findOne({ category: req.params.id }),
       BlogsModel.findOne({ category: req.params.id }),
+      AwardModel.findOne({ category: req.params.id }),
+      RescueModel.findOne({ category: req.params.id }),
     ]);
 
     if (isUsed.some((result) => result)) {
