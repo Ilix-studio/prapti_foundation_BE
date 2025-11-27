@@ -360,6 +360,7 @@ export const getByIdAwardPost = asyncHandler(
     }
   }
 );
+
 /**
  * @desc    Update award post with image management
  * @route   PATCH /api/awards/update/:id
@@ -371,6 +372,7 @@ export const updateAwardPost = asyncHandler(
     const { title, description, category, imageAction, imageIndex, imageAlt } =
       req.body;
 
+    // Validate ID format
     if (!Types.ObjectId.isValid(id)) {
       res.status(400);
       throw new Error("Invalid award ID format");
@@ -384,8 +386,11 @@ export const updateAwardPost = asyncHandler(
 
     // Handle image operations
     if (imageAction) {
+      const parsedIndex =
+        imageIndex !== undefined ? parseInt(imageIndex, 10) : NaN;
+
       switch (imageAction) {
-        case "add":
+        case "add": {
           if (!req.file) {
             res.status(400);
             throw new Error("No file uploaded for image addition");
@@ -396,9 +401,9 @@ export const updateAwardPost = asyncHandler(
             throw new Error("Maximum 10 images allowed per award");
           }
 
-          const uploadResult = await new Promise<any>((resolve, reject) => {
-            cloudinary.uploader
-              .upload_stream(
+          try {
+            const uploadResult = await new Promise<any>((resolve, reject) => {
+              const uploadStream = cloudinary.uploader.upload_stream(
                 {
                   folder: "prapti-foundation-awards",
                   resource_type: "image",
@@ -409,111 +414,176 @@ export const updateAwardPost = asyncHandler(
                   ],
                 },
                 (error, result) => {
-                  if (error) reject(error);
-                  else resolve(result);
+                  if (error) {
+                    logger.error(`Cloudinary upload failed: ${error.message}`);
+                    reject(error);
+                  } else {
+                    resolve(result);
+                  }
                 }
-              )
-              .end(req.file!.buffer);
-          });
+              );
+              uploadStream.end(req.file!.buffer);
+            });
 
-          award.images.push({
-            src: uploadResult.secure_url,
-            alt: imageAlt || award.title,
-            cloudinaryPublicId: uploadResult.public_id,
-          });
+            award.images.push({
+              src: uploadResult.secure_url,
+              alt: imageAlt || award.title,
+              cloudinaryPublicId: uploadResult.public_id,
+            });
+
+            logger.info(
+              `Image added to award ${id}: ${uploadResult.public_id}`
+            );
+          } catch (error: any) {
+            res.status(500);
+            throw new Error(`Failed to upload image: ${error.message}`);
+          }
           break;
+        }
 
-        case "delete":
-          const index = parseInt(imageIndex);
-          if (isNaN(index) || index < 0 || index >= award.images.length) {
+        case "delete": {
+          // Validate index
+          if (isNaN(parsedIndex)) {
             res.status(400);
-            throw new Error("Invalid image index");
+            throw new Error("imageIndex is required for delete action");
           }
 
+          if (parsedIndex < 0 || parsedIndex >= award.images.length) {
+            res.status(400);
+            throw new Error(
+              `Invalid image index: ${parsedIndex}. Valid range: 0-${
+                award.images.length - 1
+              }`
+            );
+          }
+
+          // Check if this is the last image - only block if no new images being added
+          // Allow deletion if there will be at least one image remaining
           if (award.images.length === 1) {
             res.status(400);
-            throw new Error("Cannot delete the last image");
+            throw new Error(
+              "Cannot delete the last image. Upload a new image first or keep at least one image."
+            );
           }
 
-          const imageToDelete = award.images[index];
-          try {
-            await cloudinary.uploader.destroy(imageToDelete.cloudinaryPublicId);
-            logger.info(`Deleted image: ${imageToDelete.cloudinaryPublicId}`);
-          } catch (error) {
-            logger.error(`Cloudinary deletion failed: ${error}`);
-          }
+          const imageToDelete = award.images[parsedIndex];
 
-          award.images.splice(index, 1);
-          break;
-
-        case "updateAlt":
-          const altIndex = parseInt(imageIndex);
-          if (
-            isNaN(altIndex) ||
-            altIndex < 0 ||
-            altIndex >= award.images.length
-          ) {
+          if (!imageToDelete) {
             res.status(400);
-            throw new Error("Invalid image index");
+            throw new Error(`No image found at index ${parsedIndex}`);
           }
 
-          if (!imageAlt) {
-            res.status(400);
-            throw new Error("Alt text is required");
+          // Delete from Cloudinary (non-blocking - continue even if fails)
+          if (imageToDelete.cloudinaryPublicId) {
+            try {
+              await cloudinary.uploader.destroy(
+                imageToDelete.cloudinaryPublicId
+              );
+              logger.info(
+                `Deleted from Cloudinary: ${imageToDelete.cloudinaryPublicId}`
+              );
+            } catch (cloudinaryError: any) {
+              // Log but don't fail the request - image might already be deleted
+              logger.warn(
+                `Cloudinary deletion warning for ${imageToDelete.cloudinaryPublicId}: ${cloudinaryError.message}`
+              );
+            }
           }
 
-          award.images[altIndex].alt = imageAlt;
+          // Remove from array
+          award.images.splice(parsedIndex, 1);
+          logger.info(`Image at index ${parsedIndex} removed from award ${id}`);
           break;
+        }
+
+        case "updateAlt": {
+          if (isNaN(parsedIndex)) {
+            res.status(400);
+            throw new Error("imageIndex is required for updateAlt action");
+          }
+
+          if (parsedIndex < 0 || parsedIndex >= award.images.length) {
+            res.status(400);
+            throw new Error(
+              `Invalid image index: ${parsedIndex}. Valid range: 0-${
+                award.images.length - 1
+              }`
+            );
+          }
+
+          if (!imageAlt || typeof imageAlt !== "string") {
+            res.status(400);
+            throw new Error("imageAlt text is required and must be a string");
+          }
+
+          award.images[parsedIndex].alt = imageAlt.trim();
+          logger.info(`Alt text updated for image at index ${parsedIndex}`);
+          break;
+        }
 
         default:
           res.status(400);
           throw new Error(
-            "Invalid image action. Use: add, delete, or updateAlt"
+            `Invalid imageAction: "${imageAction}". Use: add, delete, or updateAlt`
           );
       }
     }
 
     // Handle category update
-    if (category !== undefined) {
-      if (!category || typeof category !== "string") {
+    if (category !== undefined && category !== null && category !== "") {
+      if (typeof category !== "string") {
         res.status(400);
         throw new Error("Category must be a string");
       }
 
-      let categoryDoc;
-      try {
+      let categoryDoc = null;
+
+      // First try to find by ObjectId
+      if (Types.ObjectId.isValid(category)) {
         categoryDoc = await CategoryModel.findOne({
           _id: category,
           type: "award",
         });
-      } catch (error) {
-        // Try by name if ObjectId fails
       }
 
+      // If not found by ID, try by name
       if (!categoryDoc) {
         categoryDoc = await CategoryModel.findOne({
-          name: category,
+          name: { $regex: new RegExp(`^${category}$`, "i") },
           type: "award",
         });
       }
 
       if (!categoryDoc) {
         res.status(400);
-        throw new Error(`Invalid award category: ${category}`);
+        throw new Error(
+          `Invalid award category: "${category}". Please select a valid category.`
+        );
       }
 
-      award.category = new Types.ObjectId(categoryDoc._id);
+      award.category = categoryDoc._id as unknown as Types.ObjectId;
     }
 
-    // Update other fields
-    if (title !== undefined) award.title = title;
-    if (description !== undefined) award.description = description;
+    // Update text fields (only if provided)
+    if (title !== undefined && title !== null) {
+      const trimmedTitle = String(title).trim();
+      if (trimmedTitle.length === 0) {
+        res.status(400);
+        throw new Error("Title cannot be empty");
+      }
+      award.title = trimmedTitle;
+    }
 
+    if (description !== undefined && description !== null) {
+      award.description = String(description).trim();
+    }
+
+    // Save changes
     try {
       const updatedAward = await award.save();
       await updatedAward.populate("category", "name type");
 
-      logger.info(`Award updated: ${updatedAward.title}`);
+      logger.info(`Award updated successfully: ${updatedAward._id}`);
 
       res.status(200).json({
         success: true,
@@ -528,6 +598,7 @@ export const updateAwardPost = asyncHandler(
         res.status(400);
         throw new Error(`Validation error: ${validationErrors.join(", ")}`);
       }
+      logger.error(`Failed to save award: ${error.message}`);
       throw error;
     }
   }

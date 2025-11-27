@@ -33,7 +33,8 @@ router.post(
 
 router.get("/get", getAwardPost);
 router.get("/get/:id", getByIdAwardPost);
-router.put("/update/:id", updateAwardPost);
+// Change from PUT to PATCH
+router.patch("/update/:id", photoUploadConfig.single("image"), updateAwardPost);
 router.delete("/del/:id", delAwardPost);
 
 export default router;
