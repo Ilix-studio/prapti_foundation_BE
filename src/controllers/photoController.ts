@@ -503,7 +503,7 @@ export const updatePhoto = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * Update photo with file upload
+ * Update photo with file upload and image management
  * @route PATCH /api/photos/:id/upload
  * @access Private (Admin only)
  */
@@ -516,13 +516,162 @@ export const updatePhotoWithFile = asyncHandler(
       throw new Error("Photo not found");
     }
 
-    const { title, category, date, location, description, isActive, alt } =
-      req.body;
+    const {
+      title,
+      category,
+      date,
+      location,
+      description,
+      isActive,
+      alt,
+      imageAction,
+      imageIndex,
+      imageAlt,
+    } = req.body;
 
-    // Handle new image upload if file is provided
-    if (req.file) {
+    // Handle image operations
+    if (imageAction) {
+      const parsedIndex =
+        imageIndex !== undefined ? parseInt(imageIndex, 10) : NaN;
+
+      switch (imageAction) {
+        case "add": {
+          if (!req.file) {
+            res.status(400);
+            throw new Error("No file uploaded for image addition");
+          }
+
+          if (photo.images.length >= 20) {
+            res.status(400);
+            throw new Error("Maximum 20 images allowed per photo record");
+          }
+
+          try {
+            const uploadResult = await new Promise<any>((resolve, reject) => {
+              const uploadStream = cloudinary.uploader.upload_stream(
+                {
+                  folder: "prapti-foundation-images",
+                  resource_type: "image",
+                  transformation: [
+                    { width: 1200, height: 800, crop: "limit" },
+                    { quality: "auto" },
+                    { format: "auto" },
+                  ],
+                },
+                (error, result) => {
+                  if (error) {
+                    console.error(`Cloudinary upload failed: ${error.message}`);
+                    reject(error);
+                  } else {
+                    resolve(result);
+                  }
+                }
+              );
+              uploadStream.end(req.file!.buffer);
+            });
+
+            photo.images.push({
+              src: uploadResult.secure_url,
+              alt: imageAlt || alt || photo.title,
+              cloudinaryPublicId: uploadResult.public_id,
+            });
+
+            console.log(
+              `Image added to photo ${req.params.id}: ${uploadResult.public_id}`
+            );
+          } catch (error: any) {
+            res.status(500);
+            throw new Error(`Failed to upload image: ${error.message}`);
+          }
+          break;
+        }
+
+        case "delete": {
+          if (isNaN(parsedIndex)) {
+            res.status(400);
+            throw new Error("imageIndex is required for delete action");
+          }
+
+          if (parsedIndex < 0 || parsedIndex >= photo.images.length) {
+            res.status(400);
+            throw new Error(
+              `Invalid image index: ${parsedIndex}. Valid range: 0-${
+                photo.images.length - 1
+              }`
+            );
+          }
+
+          if (photo.images.length === 1) {
+            res.status(400);
+            throw new Error(
+              "Cannot delete the last image. Upload a new image first or keep at least one image."
+            );
+          }
+
+          const imageToDelete = photo.images[parsedIndex];
+
+          if (!imageToDelete) {
+            res.status(400);
+            throw new Error(`No image found at index ${parsedIndex}`);
+          }
+
+          // Delete from Cloudinary (non-blocking)
+          if (imageToDelete.cloudinaryPublicId) {
+            try {
+              await cloudinary.uploader.destroy(
+                imageToDelete.cloudinaryPublicId
+              );
+              console.log(
+                `Deleted from Cloudinary: ${imageToDelete.cloudinaryPublicId}`
+              );
+            } catch (cloudinaryError: any) {
+              console.warn(
+                `Cloudinary deletion warning for ${imageToDelete.cloudinaryPublicId}: ${cloudinaryError.message}`
+              );
+            }
+          }
+
+          photo.images.splice(parsedIndex, 1);
+          console.log(
+            `Image at index ${parsedIndex} removed from photo ${req.params.id}`
+          );
+          break;
+        }
+
+        case "updateAlt": {
+          if (isNaN(parsedIndex)) {
+            res.status(400);
+            throw new Error("imageIndex is required for updateAlt action");
+          }
+
+          if (parsedIndex < 0 || parsedIndex >= photo.images.length) {
+            res.status(400);
+            throw new Error(
+              `Invalid image index: ${parsedIndex}. Valid range: 0-${
+                photo.images.length - 1
+              }`
+            );
+          }
+
+          if (!imageAlt || typeof imageAlt !== "string") {
+            res.status(400);
+            throw new Error("imageAlt text is required and must be a string");
+          }
+
+          photo.images[parsedIndex].alt = imageAlt.trim();
+          console.log(`Alt text updated for image at index ${parsedIndex}`);
+          break;
+        }
+
+        default:
+          res.status(400);
+          throw new Error(
+            `Invalid imageAction: "${imageAction}". Use: add, delete, or updateAlt`
+          );
+      }
+    } else if (req.file) {
+      // Legacy behavior: add image without explicit action
       try {
-        // Upload to Cloudinary
         const cloudinaryResult = await new Promise((resolve, reject) => {
           cloudinary.uploader
             .upload_stream(
@@ -545,14 +694,11 @@ export const updatePhotoWithFile = asyncHandler(
 
         const uploadResult = cloudinaryResult as any;
 
-        // Add new image to existing images array
-        const newImage = {
+        photo.images.push({
           src: uploadResult.secure_url,
           alt: alt || photo.title,
           cloudinaryPublicId: uploadResult.public_id,
-        };
-
-        photo.images.push(newImage);
+        });
       } catch (error) {
         console.error("Image upload failed:", error);
         res.status(500);
@@ -562,38 +708,27 @@ export const updatePhotoWithFile = asyncHandler(
 
     // Validate and resolve category if provided
     if (category !== undefined) {
-      console.log("Received category value:", category, typeof category);
-
       if (!category || typeof category !== "string") {
         res.status(400);
         throw new Error("Category must be a string");
       }
 
       let categoryDoc;
-      let categoryId = category;
 
       try {
-        // First attempt: find by ObjectId
         categoryDoc = await CategoryModel.findOne({
           _id: category,
           type: "photo",
         });
       } catch (error) {
-        // If ObjectId cast fails, category might be a name instead of ID
-        console.log("ObjectId cast failed, trying to find by name:", category);
+        // ObjectId cast failed
       }
 
-      // If not found by ID, try to find by name
       if (!categoryDoc) {
         categoryDoc = await CategoryModel.findOne({
           name: category,
           type: "photo",
         });
-
-        if (categoryDoc) {
-          console.log("Found category by name, using ID:", categoryDoc._id);
-          categoryId = categoryDoc._id.toString();
-        }
       }
 
       if (!categoryDoc) {
@@ -603,7 +738,6 @@ export const updatePhotoWithFile = asyncHandler(
         );
       }
 
-      // Update with resolved category ID
       photo.category = new Types.ObjectId(categoryDoc._id);
     }
 
