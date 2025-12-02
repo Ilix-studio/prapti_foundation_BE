@@ -4,6 +4,7 @@ import asyncHandler from "express-async-handler";
 import VideoModel from "../models/VideoModel";
 import CategoryModel from "../models/categoryModel";
 import cloudinary from "../config/cloudinaryConfig";
+import { Types } from "mongoose";
 
 // Interface for query parameters
 interface VideoQueryParams {
@@ -40,40 +41,39 @@ export const getVideos = asyncHandler(async (req: Request, res: Response) => {
     sortOrder = "desc",
   } = req.query as VideoQueryParams;
 
-  // Build query object
   const query: any = { isActive: true };
 
-  // Filter by category
   if (category && category !== "all") {
-    // Try to resolve category name to ObjectId
-    const categoryDoc = await CategoryModel.findOne({
-      name: category,
-      type: "video",
-    });
+    // Check if it's a valid ObjectId
+    if (Types.ObjectId.isValid(category)) {
+      query.category = new Types.ObjectId(category);
+    } else {
+      // Fallback: try to find by name
+      const categoryDoc = await CategoryModel.findOne({
+        name: category,
+        type: "video",
+      });
 
-    if (!categoryDoc) {
-      res.status(400);
-      throw new Error(`Invalid category: ${category}`);
+      if (!categoryDoc) {
+        res.status(400);
+        throw new Error(`Invalid category: ${category}`);
+      }
+
+      query.category = categoryDoc._id;
     }
-
-    query.category = categoryDoc._id;
   }
 
-  // Search functionality
   if (search && search.trim()) {
     query.$text = { $search: search.trim() };
   }
 
-  // Pagination
   const pageNum = parseInt(page, 10);
   const limitNum = parseInt(limit, 10);
   const skip = (pageNum - 1) * limitNum;
 
-  // Sort options
   const sortOptions: any = {};
   sortOptions[sortBy] = sortOrder === "desc" ? -1 : 1;
 
-  // Execute query with pagination
   const videos = await VideoModel.find(query)
     .populate("category", "name type")
     .sort(sortOptions)
@@ -81,13 +81,8 @@ export const getVideos = asyncHandler(async (req: Request, res: Response) => {
     .limit(limitNum)
     .lean();
 
-  // Get total count for pagination
   const total = await VideoModel.countDocuments(query);
-
-  // Calculate pagination info
   const totalPages = Math.ceil(total / limitNum);
-  const hasNextPage = pageNum < totalPages;
-  const hasPrevPage = pageNum > 1;
 
   res.status(200).json({
     success: true,
@@ -97,14 +92,13 @@ export const getVideos = asyncHandler(async (req: Request, res: Response) => {
         currentPage: pageNum,
         totalPages,
         totalVideos: total,
-        hasNextPage,
-        hasPrevPage,
+        hasNextPage: pageNum < totalPages,
+        hasPrevPage: pageNum > 1,
         limit: limitNum,
       },
     },
   });
 });
-
 /**
  * @desc    Get single video by ID
  * @route   GET /api/videos/:id
