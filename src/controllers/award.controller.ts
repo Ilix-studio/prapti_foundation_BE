@@ -4,7 +4,7 @@ import CategoryModel from "../models/categoryModel";
 import AwardPostModel from "../models/awardModel";
 import cloudinary from "../config/cloudinaryConfig";
 import logger from "../utils/logger";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 
 /**
  * @desc    Get all award posts
@@ -202,6 +202,7 @@ export const uploadAward = asyncHandler(async (req: Request, res: Response) => {
  */
 export const uploadMultipleAwards = asyncHandler(
   async (req: Request, res: Response) => {
+    // Validate files
     if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
       res.status(400);
       throw new Error("No files uploaded");
@@ -210,98 +211,110 @@ export const uploadMultipleAwards = asyncHandler(
     const files = req.files as Express.Multer.File[];
     const { title, category, description, altTexts } = req.body;
 
-    // Debug logging
-    console.log("Received category value:", category, typeof category);
+    // Validate required fields
+    if (!title || typeof title !== "string") {
+      res.status(400);
+      throw new Error("Title is required and must be a string");
+    }
 
-    // Validate category exists and is type "award"
     if (!category || typeof category !== "string") {
       res.status(400);
       throw new Error("Category is required and must be a string");
     }
 
-    // Try to find by ObjectId first, if that fails, try by name
+    // Find category - handle both ObjectId and name
     let categoryDoc;
-    let categoryId = category; // Use a separate variable for the actual ID
 
-    try {
-      // First attempt: find by ObjectId
+    // Try ObjectId first
+    if (mongoose.Types.ObjectId.isValid(category)) {
       categoryDoc = await CategoryModel.findOne({
         _id: category,
         type: "award",
       });
-    } catch (error) {
-      // If ObjectId cast fails, category might be a name instead of ID
-      console.log("ObjectId cast failed, trying to find by name:", category);
     }
 
-    // If not found by ID, try to find by name
+    // If not found, try by name
     if (!categoryDoc) {
       categoryDoc = await CategoryModel.findOne({
         name: category,
         type: "award",
       });
-
-      if (categoryDoc) {
-        console.log("Found category by name, using ID:", categoryDoc._id);
-        // Update the categoryId variable to use the correct ObjectId
-        categoryId = categoryDoc._id.toString();
-      }
     }
 
     if (!categoryDoc) {
       res.status(400);
       throw new Error(
-        `Invalid award category: ${category}. Please ensure the category exists and is of type 'award'.`
+        `Invalid award category: ${category}. Ensure the category exists and is type 'award'.`
       );
     }
 
-    // Parse altTexts if it's a string
+    // Parse altTexts
     let altTextsArray: string[] = [];
     if (typeof altTexts === "string") {
       try {
         altTextsArray = JSON.parse(altTexts);
-      } catch (error) {
+      } catch {
         altTextsArray = [altTexts];
       }
     } else if (Array.isArray(altTexts)) {
       altTextsArray = altTexts;
     }
 
-    // Upload all files to Cloudinary
+    // Upload to Cloudinary
     const uploadPromises = files.map((file, index) => {
-      return new Promise((resolve, reject) => {
-        cloudinary.uploader
-          .upload_stream(
-            {
-              folder: "prapti-foundation-awards",
-              resource_type: "image",
-              transformation: [
-                { width: 1200, height: 800, crop: "limit" },
-                { quality: "auto" },
-                { format: "auto" },
-              ],
-            },
-            (error, result) => {
-              if (error) reject(error);
-              else
-                resolve({
-                  src: result!.secure_url,
-                  alt: altTextsArray[index] || title,
-                  cloudinaryPublicId: result!.public_id,
-                });
+      return new Promise<{
+        src: string;
+        alt: string;
+        cloudinaryPublicId: string;
+      }>((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: "prapti-foundation-awards",
+            resource_type: "image",
+            transformation: [
+              { width: 1200, height: 800, crop: "limit" },
+              { quality: "auto" },
+              { format: "auto" },
+            ],
+          },
+          (error, result) => {
+            if (error) {
+              console.error("Cloudinary upload error:", error);
+              return reject(error);
             }
-          )
-          .end(file.buffer);
+            if (!result) {
+              return reject(new Error("Upload failed - no result returned"));
+            }
+            resolve({
+              src: result.secure_url,
+              alt: altTextsArray[index] || title,
+              cloudinaryPublicId: result.public_id,
+            });
+          }
+        );
+
+        uploadStream.end(file.buffer);
       });
     });
 
-    const uploadedImages = await Promise.all(uploadPromises);
+    let uploadedImages;
+    try {
+      uploadedImages = await Promise.all(uploadPromises);
+    } catch (error) {
+      console.error("Failed to upload images:", error);
+      res.status(500);
+      throw new Error(
+        `Image upload failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
 
-    // Create award record with multiple images
+    // Create award
     const award = await AwardPostModel.create({
       images: uploadedImages,
       title,
-      category: categoryId, // Use the resolved category ID
+      category: categoryDoc._id,
       description: description || undefined,
     });
 
@@ -309,7 +322,7 @@ export const uploadMultipleAwards = asyncHandler(
 
     res.status(201).json({
       success: true,
-      message: "awards uploaded successfully",
+      message: "Awards uploaded successfully",
       data: {
         award,
         imagesCount: uploadedImages.length,
