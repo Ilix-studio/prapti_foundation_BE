@@ -14,22 +14,10 @@ const router = express.Router();
 
 router.post("/create", protect, createAwardPost);
 // Single photo upload
-router.post(
-  "/upload",
-  protect,
-  photoUploadConfig.single("image"),
-  handleMulterError,
-  uploadAward
-);
+router.post("/upload", protect, uploadAward);
 
 // Multiple photos upload
-router.post(
-  "/upload-multiple",
-  protect,
-  photoUploadConfig.array("images", 10), // Max 10 photos
-  handleMulterError,
-  uploadMultipleAwards
-);
+router.post("/upload-multiple", protect, uploadMultipleAwards);
 
 router.get("/get", getAwardPost);
 router.get("/get/:id", getByIdAwardPost);

@@ -100,28 +100,31 @@ export const createAwardPost = asyncHandler(
   }
 );
 
+// award.controller.ts
+
 /**
- * Upload single award
+ * Upload single award - CLIENT-SIDE pattern
  * @route POST /api/awards/upload
  * @access Private (Admin only)
  */
 export const uploadAward = asyncHandler(async (req: Request, res: Response) => {
-  if (!req.file) {
-    res.status(400);
-    throw new Error("No file uploaded");
-  }
-
-  const { alt, title, category, description } = req.body;
+  const { title, category, description, imageUrl, cloudinaryPublicId, alt } =
+    req.body;
 
   // Validate required fields
   if (!title || typeof title !== "string") {
     res.status(400);
-    throw new Error("Title is required and must be a string");
+    throw new Error("Title is required");
   }
 
   if (!category || typeof category !== "string") {
     res.status(400);
-    throw new Error("Category is required and must be a string");
+    throw new Error("Category is required");
+  }
+
+  if (!imageUrl || !cloudinaryPublicId) {
+    res.status(400);
+    throw new Error("Image URL and Cloudinary public ID are required");
   }
 
   // Find category by ID or name
@@ -143,39 +146,16 @@ export const uploadAward = asyncHandler(async (req: Request, res: Response) => {
 
   if (!categoryDoc) {
     res.status(400);
-    throw new Error(
-      `Invalid award category: ${category}. Category must exist and be of type 'award'.`
-    );
+    throw new Error(`Invalid award category: ${category}`);
   }
-
-  // Upload to Cloudinary
-  const uploadResult = await new Promise<any>((resolve, reject) => {
-    cloudinary.uploader
-      .upload_stream(
-        {
-          folder: "prapti-foundation-awards",
-          resource_type: "image",
-          transformation: [
-            { width: 1200, height: 800, crop: "limit" },
-            { quality: "auto" },
-            { format: "auto" },
-          ],
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      )
-      .end(req.file!.buffer);
-  });
 
   // Create award record
   const award = await AwardPostModel.create({
     images: [
       {
-        src: uploadResult.secure_url,
+        src: imageUrl,
         alt: alt || title,
-        cloudinaryPublicId: uploadResult.public_id,
+        cloudinaryPublicId,
       },
     ],
     title,
@@ -196,36 +176,42 @@ export const uploadAward = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * Upload multiple awards to Cloudinary and save to database
+ * Upload multiple awards - CLIENT-SIDE pattern
  * @route POST /api/awards/upload-multiple
  * @access Private (Admin only)
  */
 export const uploadMultipleAwards = asyncHandler(
   async (req: Request, res: Response) => {
-    // Validate files
-    if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
-      res.status(400);
-      throw new Error("No files uploaded");
-    }
-
-    const files = req.files as Express.Multer.File[];
-    const { title, category, description, altTexts } = req.body;
+    const { title, category, description, images } = req.body;
 
     // Validate required fields
     if (!title || typeof title !== "string") {
       res.status(400);
-      throw new Error("Title is required and must be a string");
+      throw new Error("Title is required");
     }
 
     if (!category || typeof category !== "string") {
       res.status(400);
-      throw new Error("Category is required and must be a string");
+      throw new Error("Category is required");
     }
 
-    // Find category - handle both ObjectId and name
+    if (!images || !Array.isArray(images) || images.length === 0) {
+      res.status(400);
+      throw new Error("At least one image is required");
+    }
+
+    // Validate images array structure
+    const validImages = images.every(
+      (img) => img.src && img.cloudinaryPublicId && img.alt
+    );
+    if (!validImages) {
+      res.status(400);
+      throw new Error("Invalid image data format");
+    }
+
+    // Find category
     let categoryDoc;
 
-    // Try ObjectId first
     if (mongoose.Types.ObjectId.isValid(category)) {
       categoryDoc = await CategoryModel.findOne({
         _id: category,
@@ -233,7 +219,6 @@ export const uploadMultipleAwards = asyncHandler(
       });
     }
 
-    // If not found, try by name
     if (!categoryDoc) {
       categoryDoc = await CategoryModel.findOne({
         name: category,
@@ -243,76 +228,12 @@ export const uploadMultipleAwards = asyncHandler(
 
     if (!categoryDoc) {
       res.status(400);
-      throw new Error(
-        `Invalid award category: ${category}. Ensure the category exists and is type 'award'.`
-      );
-    }
-
-    // Parse altTexts
-    let altTextsArray: string[] = [];
-    if (typeof altTexts === "string") {
-      try {
-        altTextsArray = JSON.parse(altTexts);
-      } catch {
-        altTextsArray = [altTexts];
-      }
-    } else if (Array.isArray(altTexts)) {
-      altTextsArray = altTexts;
-    }
-
-    // Upload to Cloudinary
-    const uploadPromises = files.map((file, index) => {
-      return new Promise<{
-        src: string;
-        alt: string;
-        cloudinaryPublicId: string;
-      }>((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-          {
-            folder: "prapti-foundation-awards",
-            resource_type: "image",
-            transformation: [
-              { width: 1200, height: 800, crop: "limit" },
-              { quality: "auto" },
-              { format: "auto" },
-            ],
-          },
-          (error, result) => {
-            if (error) {
-              console.error("Cloudinary upload error:", error);
-              return reject(error);
-            }
-            if (!result) {
-              return reject(new Error("Upload failed - no result returned"));
-            }
-            resolve({
-              src: result.secure_url,
-              alt: altTextsArray[index] || title,
-              cloudinaryPublicId: result.public_id,
-            });
-          }
-        );
-
-        uploadStream.end(file.buffer);
-      });
-    });
-
-    let uploadedImages;
-    try {
-      uploadedImages = await Promise.all(uploadPromises);
-    } catch (error) {
-      console.error("Failed to upload images:", error);
-      res.status(500);
-      throw new Error(
-        `Image upload failed: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`
-      );
+      throw new Error(`Invalid award category: ${category}`);
     }
 
     // Create award
     const award = await AwardPostModel.create({
-      images: uploadedImages,
+      images,
       title,
       category: categoryDoc._id,
       description: description || undefined,
@@ -325,7 +246,7 @@ export const uploadMultipleAwards = asyncHandler(
       message: "Awards uploaded successfully",
       data: {
         award,
-        imagesCount: uploadedImages.length,
+        imagesCount: images.length,
       },
     });
   }
