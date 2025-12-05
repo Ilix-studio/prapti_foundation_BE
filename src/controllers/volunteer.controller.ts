@@ -1,7 +1,29 @@
 import asyncHandler from "express-async-handler";
 import { Request, Response } from "express";
 import { VolunteerModel } from "../models/volunteer.model";
+import axios from "axios";
 import logger from "../utils/logger";
+
+// reCAPTCHA verification helper
+const verifyRecaptcha = async (token: string): Promise<boolean> => {
+  try {
+    const response = await axios.post(
+      "https://www.google.com/recaptcha/api/siteverify",
+      null,
+      {
+        params: {
+          secret: process.env.RECAPTCHA_SECRET_KEY,
+          response: token,
+        },
+      }
+    );
+
+    return response.data.success === true;
+  } catch (error) {
+    logger.error("reCAPTCHA verification error:", error);
+    return false;
+  }
+};
 
 export const createVolunteer = asyncHandler(
   async (req: Request, res: Response) => {
@@ -18,7 +40,28 @@ export const createVolunteer = asyncHandler(
       interests,
       experience,
       reason,
+      recaptchaToken,
     } = req.body;
+
+    // Verify reCAPTCHA first
+    if (!recaptchaToken) {
+      res.status(400).json({
+        success: false,
+        message: "reCAPTCHA token is required",
+      });
+      return;
+    }
+
+    const isValidRecaptcha = await verifyRecaptcha(recaptchaToken);
+
+    if (!isValidRecaptcha) {
+      logger.warn(`reCAPTCHA verification failed for email: ${email}`);
+      res.status(400).json({
+        success: false,
+        message: "reCAPTCHA verification failed. Please try again.",
+      });
+      return;
+    }
 
     // Check if volunteer already exists with this email
     const existingVolunteer = await VolunteerModel.findOne({ email });
