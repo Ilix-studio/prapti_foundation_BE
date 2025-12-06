@@ -1,29 +1,9 @@
 import asyncHandler from "express-async-handler";
 import { Request, Response } from "express";
 import { VolunteerModel } from "../models/volunteer.model";
-import axios from "axios";
+
 import logger from "../utils/logger";
-
-// reCAPTCHA verification helper
-const verifyRecaptcha = async (token: string): Promise<boolean> => {
-  try {
-    const response = await axios.post(
-      "https://www.google.com/recaptcha/api/siteverify",
-      null,
-      {
-        params: {
-          secret: process.env.RECAPTCHA_SECRET_KEY,
-          response: token,
-        },
-      }
-    );
-
-    return response.data.success === true;
-  } catch (error) {
-    logger.error("reCAPTCHA verification error:", error);
-    return false;
-  }
-};
+import { verifyRecaptcha } from "./reCAPTCHA";
 
 export const createVolunteer = asyncHandler(
   async (req: Request, res: Response) => {
@@ -43,7 +23,6 @@ export const createVolunteer = asyncHandler(
       recaptchaToken,
     } = req.body;
 
-    // Verify reCAPTCHA first
     if (!recaptchaToken) {
       res.status(400).json({
         success: false,
@@ -52,18 +31,22 @@ export const createVolunteer = asyncHandler(
       return;
     }
 
-    const isValidRecaptcha = await verifyRecaptcha(recaptchaToken);
+    const verification = await verifyRecaptcha(
+      recaptchaToken,
+      "volunteer_application"
+    );
 
-    if (!isValidRecaptcha) {
-      logger.warn(`reCAPTCHA verification failed for email: ${email}`);
+    if (!verification.success) {
+      logger.warn(
+        `reCAPTCHA verification failed for email: ${email}, score: ${verification.score}`
+      );
       res.status(400).json({
         success: false,
-        message: "reCAPTCHA verification failed. Please try again.",
+        message: verification.message || "reCAPTCHA verification failed",
       });
       return;
     }
 
-    // Check if volunteer already exists with this email
     const existingVolunteer = await VolunteerModel.findOne({ email });
     if (existingVolunteer) {
       res.status(400).json({
@@ -73,7 +56,6 @@ export const createVolunteer = asyncHandler(
       return;
     }
 
-    // Create new volunteer application
     const volunteer = await VolunteerModel.create({
       firstName,
       lastName,
@@ -89,7 +71,9 @@ export const createVolunteer = asyncHandler(
       reason,
     });
 
-    logger.info(`New volunteer application submitted: ${email}`);
+    logger.info(
+      `New volunteer application submitted: ${email}, reCAPTCHA score: ${verification.score}`
+    );
 
     res.status(201).json({
       success: true,
@@ -104,6 +88,7 @@ export const createVolunteer = asyncHandler(
     });
   }
 );
+
 export const getVolunteerInfo = asyncHandler(
   async (req: Request, res: Response) => {
     const { page = 1, limit = 10 } = req.query;
@@ -131,6 +116,7 @@ export const getVolunteerInfo = asyncHandler(
     });
   }
 );
+
 export const getVolunteerById = asyncHandler(
   async (req: Request, res: Response) => {
     const { id } = req.params;
@@ -151,6 +137,7 @@ export const getVolunteerById = asyncHandler(
     });
   }
 );
+
 export const deleteVolunteerForm = asyncHandler(
   async (req: Request, res: Response) => {
     const { id } = req.params;
