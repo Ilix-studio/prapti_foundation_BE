@@ -1,9 +1,8 @@
+// backend/controllers/volunteer.controller.ts
 import asyncHandler from "express-async-handler";
 import { Request, Response } from "express";
 import { VolunteerModel } from "../models/volunteer.model";
-
 import logger from "../utils/logger";
-import { verifyRecaptcha } from "./reCAPTCHA";
 
 export const createVolunteer = asyncHandler(
   async (req: Request, res: Response) => {
@@ -20,33 +19,18 @@ export const createVolunteer = asyncHandler(
       interests,
       experience,
       reason,
-      recaptchaToken,
     } = req.body;
 
-    if (!recaptchaToken) {
+    // Validation
+    if (!firstName || !lastName || !email || !phone) {
       res.status(400).json({
         success: false,
-        message: "reCAPTCHA token is required",
+        message: "Please provide all required fields",
       });
       return;
     }
 
-    const verification = await verifyRecaptcha(
-      recaptchaToken,
-      "volunteer_application"
-    );
-
-    if (!verification.success) {
-      logger.warn(
-        `reCAPTCHA verification failed for email: ${email}, score: ${verification.score}`
-      );
-      res.status(400).json({
-        success: false,
-        message: verification.message || "reCAPTCHA verification failed",
-      });
-      return;
-    }
-
+    // Check duplicate
     const existingVolunteer = await VolunteerModel.findOne({ email });
     if (existingVolunteer) {
       res.status(400).json({
@@ -56,24 +40,23 @@ export const createVolunteer = asyncHandler(
       return;
     }
 
+    // Create volunteer
     const volunteer = await VolunteerModel.create({
-      firstName,
-      lastName,
-      email,
-      phone,
-      address,
-      district,
-      state,
-      pincode,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      email: email.trim().toLowerCase(),
+      phone: parseInt(phone, 10),
+      address: address?.trim(),
+      district: district.trim(),
+      state: state.trim(),
+      pincode: parseInt(pincode, 10),
       availability,
       interests,
-      experience,
-      reason,
+      experience: experience?.trim(),
+      reason: reason.trim(),
     });
 
-    logger.info(
-      `New volunteer application submitted: ${email}, reCAPTCHA score: ${verification.score}`
-    );
+    logger.info(`New volunteer application: ${email}`);
 
     res.status(201).json({
       success: true,
