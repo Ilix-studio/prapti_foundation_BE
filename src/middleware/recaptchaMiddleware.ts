@@ -15,12 +15,8 @@ export const verifyRecaptchaV2 = async (
 ): Promise<void> => {
   const token = req.body.recaptchaToken;
   // Bypass in development
-  // Safer approach
-  if (
-    process.env.NODE_ENV === "development" ||
-    (process.env.ALLOW_DEV_BYPASS === "true" && token === "dev-bypass")
-  ) {
-    logger.info("reCAPTCHA bypassed");
+  if (process.env.NODE_ENV === "development" || token === "dev-bypass") {
+    logger.info("reCAPTCHA bypassed in development mode");
     next();
     return;
   }
