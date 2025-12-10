@@ -15,7 +15,7 @@ if (process.env.NODE_ENV === "development") {
 }
 
 // Admin login with validation
-router.post("/login", validateLogin, loginAdmin);
+router.post("/login", validateLogin, verifyRecaptchaV2, loginAdmin);
 
 // Admin logout
 router.post("/logout", protect, logoutAdmin);

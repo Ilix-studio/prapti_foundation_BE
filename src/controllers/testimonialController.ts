@@ -171,6 +171,23 @@ export const createTestimonial = asyncHandler(
   async (req: Request, res: Response) => {
     const { quote, name, profession, rate } = req.body;
 
+    // Validate required fields
+    if (!quote || !name || !profession || rate === undefined) {
+      res.status(400).json({
+        success: false,
+        message: "All fields are required: quote, name, profession, rate",
+      });
+      return;
+    }
+    // Validate rate range
+    if (typeof rate !== "number" || rate < 1 || rate > 5) {
+      res.status(400).json({
+        success: false,
+        message: "Rate must be a number between 1 and 5",
+      });
+      return;
+    }
+
     // Check if testimonial with same name and quote already exists
     const existingTestimonial = await TestimonialModel.findOne({
       name: name.trim(),

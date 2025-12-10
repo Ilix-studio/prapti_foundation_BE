@@ -11,5 +11,9 @@
     "resolveJsonModule": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "**/*.test.ts"]
+  "exclude": [
+    "node_modules",
+    "**/*.test.ts",
+    "node_modules/express-rate-limit/tsconfig.json"
+  ]
 }

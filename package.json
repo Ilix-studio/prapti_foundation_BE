@@ -43,6 +43,7 @@
     "winston": "^3.17.0"
   },
   "devDependencies": {
+    "@express-rate-limit/tsconfig": "^1.0.2",
     "@types/bcrypt": "^5.0.2",
     "@types/compression": "^1.8.0",
     "@types/cors": "^2.8.18",
