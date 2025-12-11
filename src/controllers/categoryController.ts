@@ -1,6 +1,11 @@
 import { Request, Response } from "express";
 import asyncHandler from "express-async-handler";
 import CategoryModel from "../models/categoryModel";
+import PhotoModel from "../models/photoModel";
+import VideoModel from "../models/VideoModel";
+import BlogPostModel from "../models/blogModel";
+import AwardPostModel from "../models/awardModel";
+import RescuePostModel from "../models/rescueModel";
 
 /**
  * @desc    Get categories by type
@@ -103,18 +108,12 @@ export const deleteCategory = asyncHandler(
     }
 
     // Check if category is being used
-    const PhotoModel = require("../models/photoModel").default;
-    const VideoModel = require("../models/videoModel").default;
-    const BlogsModel = require("../models/blogModel").default;
-    const AwardModel = require("../models/awardModel").default;
-    const RescueModel = require("../models/rescueModel").default;
-
     const isUsed = await Promise.all([
       PhotoModel.findOne({ category: req.params.id }),
       VideoModel.findOne({ category: req.params.id }),
-      BlogsModel.findOne({ category: req.params.id }),
-      AwardModel.findOne({ category: req.params.id }),
-      RescueModel.findOne({ category: req.params.id }),
+      BlogPostModel.findOne({ category: req.params.id }),
+      AwardPostModel.findOne({ category: req.params.id }),
+      RescuePostModel.findOne({ category: req.params.id }),
     ]);
 
     if (isUsed.some((result) => result)) {
