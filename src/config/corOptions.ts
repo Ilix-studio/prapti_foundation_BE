@@ -4,7 +4,7 @@ import allowOrigins from "./allowOrigins";
 const corsOptions: CorsOptions = {
   origin: (
     origin: string | undefined,
-    callback: (err: Error | null, allow?: boolean) => void
+    callback: (err: Error | null, allow?: boolean) => void,
   ) => {
     if (allowOrigins.indexOf(origin!) !== -1 || !origin) {
       callback(null, true);
@@ -13,6 +13,8 @@ const corsOptions: CorsOptions = {
     }
   },
   credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   optionsSuccessStatus: 200,
 };
 

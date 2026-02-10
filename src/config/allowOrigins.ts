@@ -11,6 +11,8 @@ const allowOrigins = [
   "https://prapti-foundation-site.vercel.app/admin/dashboard",
   "https://prapti-foundation-site.vercel.app/blog",
   "https://prapti-foundation-be.onrender.com/api/blogs/getAll",
+  "https://biswajitphukan.com",
+  "https://www.biswajitphukan.com",
   "",
 ];
 
