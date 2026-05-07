@@ -34,10 +34,12 @@ const PORT = process.env.PORT || 8080;
 
 // Security middleware
 app.use(helmet());
-app.use(compression());
 
-//CORS
+//CORS - must come before compression
 app.use(cors(corsOptions));
+
+// Compression middleware
+app.use(compression());
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
