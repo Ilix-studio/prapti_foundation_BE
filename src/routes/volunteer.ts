@@ -2,10 +2,13 @@ import express from "express";
 
 import { protect } from "../middleware/authMiddleware";
 import {
+  approveVolunteer,
   createVolunteer,
   deleteVolunteerForm,
   getVolunteerById,
   getVolunteerInfo,
+  markVolunteerAsRead,
+  rejectVolunteer,
 } from "../controllers/volunteer.controller";
 
 const router = express.Router();
@@ -21,6 +24,15 @@ router.get("/info", protect, getVolunteerInfo);
 // GET /api/volunteers/:id - get volunteer by Id
 // Private
 router.get("/:id", protect, getVolunteerById);
+
+// PATCH /api/volunteers/:id/mark-read
+router.patch("/:id/mark-read", protect, markVolunteerAsRead);
+
+// PATCH /api/volunteers/:id/approve
+router.patch("/:id/approve", protect, approveVolunteer);
+
+// PATCH /api/volunteers/:id/reject
+router.patch("/:id/reject", protect, rejectVolunteer);
 
 // Del /api/volunteers/:id - del volunteer by Id
 // Private
