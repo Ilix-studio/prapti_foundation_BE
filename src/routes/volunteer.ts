@@ -21,10 +21,6 @@ router.post("/create", createVolunteer);
 // Private
 router.get("/info", protect, getVolunteerInfo);
 
-// GET /api/volunteers/:id - get volunteer by Id
-// Private
-router.get("/:id", protect, getVolunteerById);
-
 // PATCH /api/volunteers/:id/mark-read
 router.patch("/:id/mark-read", protect, markVolunteerAsRead);
 
@@ -33,6 +29,10 @@ router.patch("/:id/approve", protect, approveVolunteer);
 
 // PATCH /api/volunteers/:id/reject
 router.patch("/:id/reject", protect, rejectVolunteer);
+
+// GET /api/volunteers/:id - get volunteer by Id
+// Private
+router.get("/:id", protect, getVolunteerById);
 
 // Del /api/volunteers/:id - del volunteer by Id
 // Private
