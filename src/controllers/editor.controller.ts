@@ -6,6 +6,7 @@ import AdminModel from "../models/adminModel";
 import logger from "../utils/logger";
 import { sendEditorCredentialsEmail } from "../utils/emailService";
 import { ErrorResponse } from "../constants/errorResponse";
+import { ROLES } from "../constants/roles";
 
 const PASSWORD_LENGTH = 12;
 
@@ -151,5 +152,65 @@ export const resendEditorCredentials = asyncHandler(
       success: true,
       message: "New credentials sent to editor's email",
     });
+  },
+);
+/**
+ * @desc   Editor login
+ * @route  POST /api/editor/login
+ * @access Public
+ */
+export const loginEditor = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return next(
+        new ErrorResponse("Please provide both email and password", 400),
+      );
+    }
+
+    const editor = await EditorModel.findOne({
+      email: String(email).toLowerCase().trim(),
+    }).select("+password");
+
+    if (!editor || !(await editor.matchPassword(password))) {
+      logger.info(`Failed editor login attempt for email: ${email}`);
+      // Generic message — do not reveal whether the account exists.
+      return next(new ErrorResponse("Invalid credentials", 401));
+    }
+
+    if (!editor.isActive) {
+      return next(new ErrorResponse("Account is deactivated", 403));
+    }
+
+    const token = editor.getSignedJwtToken(); // embeds { id, role: "Editor" }
+
+    logger.info(`Editor logged in: ${editor.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      data: {
+        id: editor._id,
+        name: editor.name,
+        email: editor.email,
+        role: ROLES.EDITOR,
+        token,
+      },
+    });
+  },
+);
+
+/**
+ * @desc   Editor logout
+ * @route  POST /api/editor/logout
+ * @access Private (Editor)
+ */
+export const logoutEditor = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (req.user) {
+      logger.info(`Editor logged out: ${req.user.email}`);
+    }
+    res.status(200).json({ success: true, message: "Logout successful" });
   },
 );
