@@ -192,7 +192,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const EMAIL_FROM =
   process.env.EMAIL_FROM || "Prapti Foundation <no-reply@praptifoundation.in>";
 const LOGIN_URL =
-  process.env.ADMIN_LOGIN_URL || "https://praptifoundation.in/E-login";
+  process.env.ADMIN_LOGIN_URL || "https://praptifoundation.in/editor/login";
 
 interface EditorCredentials {
   to: string;
